@@ -1,0 +1,50 @@
+services:
+  database:
+    image: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    volumes:
+      - ./data/mongo:/data/db
+    networks:
+      - snaggable
+    
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    volumes:
+      - ./code/backend:/usr/app
+      - exclude_backend:/usr/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database
+    networks:
+      - snaggable
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    volumes:
+      - ./code/frontend:/usr/app
+      - exclude_frontend:/usr/app/node_modules
+    ports:
+      - "4000:4001"
+    depends_on:
+      - database
+      - backend
+    networks:
+      - snaggable
+
+networks:
+  snaggable:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  exclude_backend:
+  exclude_frontend:
