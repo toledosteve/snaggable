@@ -3,7 +3,6 @@ import { StorageService } from './storage.service';
 import { promises as fsPromises } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { fileTypeFromBuffer } from 'file-type';
 
 @Injectable()
 export class LocalStorageService implements StorageService {
@@ -58,7 +57,6 @@ export class LocalStorageService implements StorageService {
     }
 
     private async validateFile(file: Express.Multer.File): Promise<boolean> {
-        const fileTypeResult = await fileTypeFromBuffer(file.buffer);
-        return fileTypeResult && this.allowedMimeTypes.includes(fileTypeResult.mime);
+        return this.allowedMimeTypes.includes(file.mimetype);
     }
 }

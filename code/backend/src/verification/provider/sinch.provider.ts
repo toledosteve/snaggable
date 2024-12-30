@@ -1,8 +1,9 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Verification, VerificationService } from '@sinch/sdk-core';
+import { IVerificationProvider } from '../verification-provider.interface';
 
 @Injectable()
-export class SinchService {
+export class SinchProvider implements IVerificationProvider{
   private verificationService: VerificationService;
 
   constructor() {
@@ -12,40 +13,41 @@ export class SinchService {
     };
 
     if (!credentials.applicationKey || !credentials.applicationSecret) {
-      throw new Error('Sinch application key or secret is missing in environment variables.');
+      throw new Error('Sinch application key or secret is missing.');
     }
 
     this.verificationService = new VerificationService(credentials);
   }
 
-  async startSmsVerification(phoneNumber: string): Promise<string> {
+  async sendVerification(phoneNumber: string): Promise<string> {
     const requestData = Verification.startVerificationHelper.buildSmsRequest(phoneNumber);
 
     try {
       const response = await this.verificationService.verifications.startSms(requestData);
+
       if (!response.id) {
-        throw new Error('Verification ID is undefined.');
+        throw new Error('Sinch verification ID is undefined.');
       }
+
       return response.id;
     } catch (error) {
-      throw new HttpException(
-        `Failed to start SMS verification: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new Error(`Failed to start SMS verification: ${error.message}`);
     }
   }
 
-  async verifySmsCode(verificationId: string, code: string): Promise<string> {
+  async validateVerification(verificationId: string, code: string): Promise<boolean> {
     const requestData = Verification.reportVerificationByIdHelper.buildSmsRequest(verificationId, code);
 
     try {
       const response = await this.verificationService.verifications.reportSmsById(requestData);
-      return response.status;
+
+      if (!response.status) {
+        throw new Error('Verification status is undefined.');
+      }
+
+      return response.status === 'SUCCESSFUL';
     } catch (error) {
-      throw new HttpException(
-        `Invalid verification code or ID: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error(`Failed to verify SMS code: ${error.message}`);
     }
   }
 }
