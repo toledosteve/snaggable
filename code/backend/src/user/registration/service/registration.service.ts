@@ -107,7 +107,7 @@ export class RegistrationService {
     
         // Save step data
         registration.stepsCompleted.push(stepKey);
-        registration.registrationData[stepKey] = stepData;
+        registration.registrationData.set(stepKey, stepData);
         registration.updatedAt = new Date();
         await registration.save();
     
@@ -136,14 +136,19 @@ export class RegistrationService {
             throw new Error(`Missing steps: ${missingSteps.join(', ')}`);
         }
 
+        const registrationData = Object.fromEntries(registration.registrationData);
+
         const createUserDto: CreateUserDto = {
             userId: registrationId,
-            name: registration.registrationData.name,
-            dob: registration.registrationData.dob,
-            gender: registration.registrationData.gender,
-            photos: registration.registrationData.photos || [],
-            location: registration.registrationData.location || null,
-            showGender: registration.registrationData.showGender ?? true 
+            phoneNumber: registrationData.phoneNumber,
+            phoneVerified: registration.phoneVerified,
+            name: typeof registrationData.name === 'object' ? registrationData.name.name : registrationData.name,
+            dob: typeof registrationData.dob === 'object' ? registrationData.dob : null,
+            gender: typeof registrationData.gender === 'object' ? registrationData.gender.gender : registrationData.gender,
+            photos: registrationData.photos || [],
+            location: registrationData.location || null,
+            showGender: registrationData.showGender ?? true, 
+            acceptPledge: registrationData.acceptPledge ?? false,
         };
 
         const user = await this.userService.create(createUserDto);
@@ -178,7 +183,10 @@ export class RegistrationService {
             uploadedUrls.push(url);
         }
 
-        registration.registrationData.photos = uploadedUrls;
+        registration.registrationData.set('photos', uploadedUrls);
+        if (!registration.stepsCompleted.includes('photos')) {
+            registration.stepsCompleted.push('photos');
+          }
         registration.updatedAt = new Date();
         await registration.save();
 

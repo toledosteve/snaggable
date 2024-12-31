@@ -1,4 +1,4 @@
-import { IsNumber, IsString, Max, Min, IsIn, IsArray, ArrayNotEmpty } from "class-validator";
+import { IsNumber, IsString, Max, Min, IsIn, IsBoolean } from "class-validator";
 
 export class NameDto {
     @IsString()
@@ -24,13 +24,31 @@ export class GenderDto {
     @IsString()
     @IsIn(['Uncle', 'Auntie', '2 Spirit'])
     gender: string;
-} 
+}
+
+export class ShowGenderDto {
+    @IsString()
+    @IsBoolean()
+    showGender: boolean;
+}
 
 export class PhotosDto {
     @IsString()
     registrationId: string;
+}
 
-    @IsArray()
-    @ArrayNotEmpty()
-    images: Express.Multer.File[];
+export class LocationDto {
+    @IsNumber()
+    latittude: number;
+
+    @IsNumber()
+    longitude: number;
+
+    @IsNumber()
+    accuracy: number;
+}
+
+export class PledgeDto {
+    @IsBoolean()
+    acceptPledge: boolean;
 }

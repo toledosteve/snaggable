@@ -1,9 +1,15 @@
 // user.dto.ts
-import { IsString, IsBoolean, IsArray, IsOptional, IsObject, IsNumber, IsUUID } from 'class-validator';
+import { IsString, IsBoolean, IsArray, IsOptional, IsObject, IsNumber, IsUUID, IsPhoneNumber } from 'class-validator';
 
 export class CreateUserDto {
   @IsUUID()
   userId: string;
+
+  @IsPhoneNumber()
+  phoneNumber: string;
+
+  @IsBoolean()
+  phoneVerified: boolean;
 
   @IsString()
   name: string;
@@ -25,6 +31,9 @@ export class CreateUserDto {
   @IsBoolean()
   @IsOptional()
   showGender?: boolean;
+
+  @IsBoolean()
+  acceptPledge: boolean;
 }
 
 export class UpdateUserDto {
@@ -57,6 +66,12 @@ export class UserResponseDto {
   @IsUUID()
   userId: string;
 
+  @IsPhoneNumber()
+  phoneNumber: string;
+
+  @IsBoolean()
+  phoneVerified: boolean;
+
   @IsString()
   name: string;
 
@@ -75,6 +90,9 @@ export class UserResponseDto {
 
   @IsBoolean()
   showGender: boolean;
+
+  @IsBoolean()
+  acceptPledge: boolean;
 
   @IsString()
   createdAt: string;

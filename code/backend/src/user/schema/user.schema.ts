@@ -1,15 +1,17 @@
 import { Schema, Document, model } from 'mongoose';
 
 export interface User extends Document {
-  userId: string; // Unique user identifier (UUID)
-  phoneNumber?: string; // For phone-based login
-  email?: string; // For email-based login (optional)
+  userId: string; 
+  phoneNumber?: string; 
+  phoneVerified: boolean;
+  email?: string; 
   name: string;
   dob: { day: number; month: string; year: number };
   gender: string;
-  photos: string[]; // URLs or paths to uploaded photos
+  photos: string[]; 
   location: { lat: number; lon: number } | null;
   showGender: boolean;
+  acceptPledge: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,6 +20,7 @@ export const UserSchema = new Schema<User>(
   {
     userId: { type: String, required: true, unique: true },
     phoneNumber: { type: String, unique: true, sparse: true },
+    phoneVerified: { type: Boolean, default: false },
     email: { type: String, unique: true, sparse: true },
     name: { type: String, required: true },
     dob: {
@@ -29,6 +32,7 @@ export const UserSchema = new Schema<User>(
     photos: { type: [String], default: [] },
     location: { type: Object, default: null },
     showGender: { type: Boolean, default: true },
+    acceptPledge: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },

@@ -79,7 +79,7 @@ export class RegistrationController {
     }
 
     @Post("upload-photos")
-    @UseInterceptors(FilesInterceptor("files", 6, { limits: { fileSize: 5 * 1024 * 1024 }}))
+    @UseInterceptors(FilesInterceptor("photos", 6, { limits: { fileSize: 5 * 1024 * 1024 }}))
     async uploadPhotos(
         @UploadedFiles() files: Express.Multer.File[],
         @Body() body: PhotosDto

@@ -1,10 +1,13 @@
-import { NameDto, DobDto, GenderDto, PhotosDto } from "../dto/steps.dto";
+import { NameDto, DobDto, GenderDto, ShowGenderDto, PhotosDto, LocationDto, PledgeDto } from "../dto/steps.dto";
 
-export const stepsOrder = ['name', 'dob', 'gender', 'photos'];
+export const stepsOrder = ['name', 'dob', 'gender', 'show-gender', 'photos', 'location', 'pledge'];
 
 export const stepsRegistry = {
     name: NameDto,
     dob: DobDto,
     gender: GenderDto,
-    photos: PhotosDto
+    showGender: ShowGenderDto,
+    photos: PhotosDto,
+    location: LocationDto,
+    acceptPledge: PledgeDto
 }
