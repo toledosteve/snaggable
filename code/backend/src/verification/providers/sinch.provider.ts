@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Verification, VerificationService } from '@sinch/sdk-core';
-import { IVerificationProvider } from '../verification-provider.interface';
+import { IVerificationProvider } from './verification-provider.interface';
 
 @Injectable()
 export class SinchProvider implements IVerificationProvider{

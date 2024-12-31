@@ -3,20 +3,25 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Registration, RegistrationAudit } from '../schema/registration.schema';
 import { PhoneVerificationService } from 'src/verification/phone-verification.service';
-import { stepsRegistry } from '../config/steps.config';
-import { plainToInstance } from 'class-transformer';
+import { UserService } from 'src/user/user.service';
+import { User } from 'src/user/schema/user.schema';
+import { stepsRegistry, stepsOrder } from '../config/steps.config';
+import { CreateUserDto } from 'src/user/dto/user.dto';
+import { PhotoService } from 'src/photo/photo-upload.service';
 
 @Injectable()
 export class RegistrationService {
     constructor(
         private readonly verificationService: PhoneVerificationService,
+        private readonly userService: UserService,
+        private readonly photoService: PhotoService,
         @InjectModel('Registration') private readonly registrationModel: Model<Registration>,
         @InjectModel('RegistrationAudit') private readonly registrationAuditModel: Model<RegistrationAudit>,
     ) {}
 
-    async start(phoneNumber: string): Promise<string> {
+    async start(phoneNumber: string, loginMethod: 'facebook' | 'apple' | 'phone'): Promise<string> {
         const registrationId = crypto.randomUUID();
-        const verificationId = await this.verificationService.sendVerification(phoneNumber);
+        const verificationId = loginMethod === 'phone' ? await this.verificationService.sendVerification(phoneNumber) : undefined;
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
         await this.registrationModel.create({
@@ -27,6 +32,7 @@ export class RegistrationService {
             phoneVerified: false,
             stepsCompleted: [],
             registrationData: {},
+            loginMethod,
             createdAt: new Date(),
             expiresAt,
         });
@@ -80,61 +86,82 @@ export class RegistrationService {
     }
 
     async saveStep(registrationId: string, stepKey: string, stepData: Record<string, any>): Promise<{ message: string, nextStep?: string }> {
-        const registration = await this.registrationModel.findOne({ 
+        const registration = await this.registrationModel.findOne({
             registrationId,
             verificationStatus: 'verified',
             expiresAt: { $gte: new Date() },
         });
-
+    
         if (!registration) {
-            throw new Error('Invalid registration ID');
+            throw new Error('Invalid registration ID.');
         }
-
+    
         if (registration.stepsCompleted.includes(stepKey)) {
             throw new Error(`Step "${stepKey}" has already been completed.`);
         }
-
-        const StepDto = stepsRegistry[stepKey];
-        if (!StepDto) {
-            throw new Error(`Step "${stepKey}" is not a valid registration step.`);
+    
+        const expectedStep = stepsOrder[registration.stepsCompleted.length];
+        if (stepKey !== expectedStep) {
+            throw new Error(`Step "${stepKey}" is out of order. Expected step: "${expectedStep}".`);
         }
-
-        const validatedData = plainToInstance(StepDto, stepData);
-        console.log('Transformed Data:', validatedData);
-        try {
-            await new ValidationPipe({
-                whitelist: true,
-                forbidNonWhitelisted: true,
-                transform: true,
-                exceptionFactory: (errors) => {
-                    const formattedErrors = errors.map((err) => ({
-                        field: err.property,
-                        errors: Object.values(err.constraints || {}),
-                    }));
-                    return new Error(
-                        `Validation failed for step "${stepKey}": ${JSON.stringify(
-                            formattedErrors
-                        )}`
-                    );
-                },
-            }).transform(validatedData, { type: 'body' });
-        } catch (error) {
-            throw new Error(error.message);
-        }
-
+    
+        // Save step data
         registration.stepsCompleted.push(stepKey);
         registration.registrationData[stepKey] = stepData;
         registration.updatedAt = new Date();
         await registration.save();
-
-        const nextStep = this.getNextStep(stepKey);
+    
+        const nextStep = stepsOrder[registration.stepsCompleted.length];
         return {
             message: 'Step saved successfully.',
             nextStep,
-        }
+        };
     }
 
-    async complete(registrationId: string): Promise<void> {
+    async complete(registrationId: string): Promise<User> {
+        const registration = await this.registrationModel.findOne({
+            registrationId,
+            verificationStatus: 'verified',
+            expiresAt: { $gte: new Date() },
+        });
+    
+        if (!registration) {
+            throw new Error('Invalid registration ID');
+        }
+    
+        const requiredSteps = Object.keys(stepsRegistry);
+        const missingSteps = requiredSteps.filter(step => !registration.stepsCompleted.includes(step));
+    
+        if (missingSteps.length > 0) {
+            throw new Error(`Missing steps: ${missingSteps.join(', ')}`);
+        }
+
+        const createUserDto: CreateUserDto = {
+            userId: registrationId,
+            name: registration.registrationData.name,
+            dob: registration.registrationData.dob,
+            gender: registration.registrationData.gender,
+            photos: registration.registrationData.photos || [],
+            location: registration.registrationData.location || null,
+            showGender: registration.registrationData.showGender ?? true 
+        };
+
+        const user = await this.userService.create(createUserDto);
+    
+        await this.registrationAuditModel.create({
+            registrationId,
+            status: 'completed',
+            stepsCompleted: registration.stepsCompleted,
+            createdAt: registration.createdAt,
+            completedAt: new Date(),
+        });
+    
+        await this.registrationModel.deleteOne({ registrationId });
+
+        return user;
+    }
+
+    async savePhotos(registrationId: string, files: Express.Multer.File[]): Promise<{ urls: string[] }> {
         const registration = await this.registrationModel.findOne({
             registrationId,
             verificationStatus: 'verified',
@@ -145,22 +172,17 @@ export class RegistrationService {
             throw new Error('Invalid registration ID');
         }
 
-        const requiredSteps = Object.keys(stepsRegistry);
-        const missingSteps = requiredSteps.filter(step => !registration.stepsCompleted.includes(step));
-
-        if (missingSteps.length > 0) {
-            throw new Error(`Missing steps: ${missingSteps.join(', ')}`);
+        const uploadedUrls = [];
+        for (const file of files) {
+            const url = await this.photoService.uploadPhoto(file, registrationId);
+            uploadedUrls.push(url);
         }
 
-        await this.registrationAuditModel.create({
-            registrationId,
-            status: 'completed',
-            stepsCompleted: registration.stepsCompleted,
-            createdAt: registration.createdAt,
-            completedAt: new Date(),
-        });
+        registration.registrationData.photos = uploadedUrls;
+        registration.updatedAt = new Date();
+        await registration.save();
 
-        await this.registrationModel.deleteOne({ registrationId });
+        return { urls: uploadedUrls };
     }
 
     async cleanupExpiredRegistrations(): Promise<void> {
@@ -181,17 +203,5 @@ export class RegistrationService {
         
             await this.registrationModel.deleteOne({ registrationId: registration.registrationId });
         }
-    }
-
-    private getNextStep(currentStep: string): string | null {
-        const steps = Object.keys(stepsRegistry);
-        const currentIndex = steps.indexOf(currentStep);
-      
-        if (currentIndex === -1) {
-          throw new Error(`Invalid current step: ${currentStep}`);
-        }
-      
-        const nextIndex = currentIndex + 1;
-        return steps[nextIndex] || null; 
     }
 }

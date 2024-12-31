@@ -4,6 +4,9 @@ import { RegistrationService } from './registration/service/registration.service
 import { RegistrationController } from './registration/registration.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { RegistrationSchema, RegistrationAuditSchema } from './registration/schema/registration.schema';
+import { UserSchema } from './schema/user.schema';
+import { UserService } from './user.service';
+import { PhotoModule } from 'src/photo/photo.module';
 
 @Module({
   imports: [
@@ -11,9 +14,11 @@ import { RegistrationSchema, RegistrationAuditSchema } from './registration/sche
     MongooseModule.forFeature([
       { name: 'Registration', schema: RegistrationSchema },
       { name: 'RegistrationAudit', schema: RegistrationAuditSchema },
-    ])
+      { name: 'User', schema: UserSchema }
+    ]),
+    PhotoModule.register('local'),
   ],
   controllers: [RegistrationController],
-  providers: [RegistrationService]
+  providers: [RegistrationService, UserService]
 })
 export class UserModule {}

@@ -1,6 +1,11 @@
-import { Controller, Post, Body, BadRequestException, HttpCode } from '@nestjs/common';
-import { CreateRegistrationDto, VerifyPhoneDto } from './dto/registration.dto';
+import { Controller, Post, Body, BadRequestException, HttpCode, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { CompleteRegistrationDto, CreateRegistrationDto, VerifyPhoneDto } from './dto/registration.dto';
 import { RegistrationService } from './service/registration.service';
+import { stepsRegistry } from './config/steps.config';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { PhotosDto } from './dto/steps.dto';
 
 @Controller('user/register')
 export class RegistrationController {
@@ -10,7 +15,10 @@ export class RegistrationController {
     @HttpCode(200)
     async startRegistration(@Body() createRegistration: CreateRegistrationDto) {
         try {
-            const registrationId = await this.registrationService.start(createRegistration.phoneNumber);
+            const registrationId = await this.registrationService.start(
+                createRegistration.phoneNumber,
+                createRegistration.loginMethod
+            );
             return { registrationId, message: 'Registration started successfully.' };
         } catch (error) {
             throw new BadRequestException(error.message);
@@ -34,12 +42,59 @@ export class RegistrationController {
     @Post("save-step")
     @HttpCode(200)
     async saveStep(@Body() saveStepDto: any) {
+        const { registrationId, step, data } = saveStepDto;
+
+        const StepDto = stepsRegistry[step];
+        if (!StepDto) {
+            throw new BadRequestException(`Invalid step: ${step}`);
+        }
+
+        if (saveStepDto.step === 'photos') {
+            throw new BadRequestException('Please use /upload-photos endpoint to upload photos.');
+        }
+
+        const transformedData = plainToInstance(StepDto, data);
+        const validationErrors = await validate(transformedData, {
+            whitelist: true,
+            forbidNonWhitelisted: true,
+        });
+
+        if (validationErrors.length > 0) {
+            const formattedErrors = validationErrors.reduce((acc, err) => {
+                acc[err.property] = Object.values(err.constraints || {});
+                return acc;
+            }, {} as Record<string, string[]>);
+
+            throw new BadRequestException({
+                message: `Validation failed for step "${step}"`,
+                errors: formattedErrors,
+            });
+        }
+
         try {
-            return await this.registrationService.saveStep(
-                saveStepDto.registrationId,
-                saveStepDto.step,
-                saveStepDto.data
-            );
+            return await this.registrationService.saveStep(registrationId, step, transformedData);
+        } catch (error) {
+            throw new BadRequestException(error.message);
+        }
+    }
+
+    @Post("upload-photos")
+    @UseInterceptors(FilesInterceptor("files", 6, { limits: { fileSize: 5 * 1024 * 1024 }}))
+    async uploadPhotos(
+        @UploadedFiles() files: Express.Multer.File[],
+        @Body() body: PhotosDto
+    ) {
+        if (!files || files.length === 0) {
+            throw new BadRequestException('No files were uploaded.');
+        }
+
+        if (!body.registrationId) {
+            throw new BadRequestException('Registration ID is required.');
+        }
+
+        try {
+            const result = await this.registrationService.savePhotos(body.registrationId, files);
+            return { message: 'Photos uploaded successfully.', ...result };
         } catch (error) {
             throw new BadRequestException(error.message);
         }
@@ -47,9 +102,9 @@ export class RegistrationController {
 
     @Post("complete")
     @HttpCode(200)
-    async completeRegistration(@Body() registrationId: string) {
+    async completeRegistration(@Body() completeRegistrationDto: CompleteRegistrationDto) {
         try {
-            await this.registrationService.complete(registrationId);
+            await this.registrationService.complete(completeRegistrationDto.registrationId);
             return { message: 'Registration completed successfully.' };
         } catch (error) {
             throw new BadRequestException(error.message);

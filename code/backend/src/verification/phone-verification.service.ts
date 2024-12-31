@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { IVerificationProvider } from './verification-provider.interface';
+import { IVerificationProvider } from './providers/verification-provider.interface';
 
 @Injectable()
 export class PhoneVerificationService {

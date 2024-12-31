@@ -1,6 +1,6 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { PhoneVerificationService } from './phone-verification.service';
-import { SinchProvider } from './provider/sinch.provider';
+import { SinchProvider } from './providers/sinch.provider';
 
 @Module({})
 export class VerificationModule {

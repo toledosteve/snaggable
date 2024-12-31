@@ -1,4 +1,4 @@
-import { Schema, Document } from "mongoose";
+import { Schema, Document, model } from "mongoose";
 
 export interface Registration extends Document {
     registrationId: string;
@@ -7,7 +7,8 @@ export interface Registration extends Document {
     verificationStatus: 'pending' | 'verified' | 'expired';
     phoneVerified: boolean;
     stepsCompleted: string[];
-    registrationData: Record<string, any>;
+    registrationData: Map<string, any>;
+    loginMethod: 'facebook' | 'apple' | 'phone';
     createdAt: Date;
     updatedAt: Date;
     expiresAt: Date; 
@@ -17,7 +18,6 @@ export interface RegistrationAudit extends Document {
     registrationId: string;
     status: 'abandoned' | 'completed' | 'unverified';
     stepsCompleted: string[];
-    registrationData: Record<string, any>;
     createdAt: Date;
     completedAt: Date;
 }
@@ -29,10 +29,16 @@ export const RegistrationSchema = new Schema<Registration>({
     verificationStatus: { type: String, enum: ['pending', 'verified', 'expired'], default: 'pending' },
     phoneVerified: { type: Boolean, default: false },
     stepsCompleted: { type: [String], default: [] },
-    registrationData: { type: Object, default: {} },
+    registrationData: {
+        type: Map,
+        of: Schema.Types.Mixed, 
+        default: {},
+      },
+    loginMethod: { type: String, enum: ['facebook', 'apple', 'phone'], required: true },
     createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, required: true }, 
-});
+}, { timestamps: true });
 
 export const RegistrationAuditSchema = new Schema<RegistrationAudit>({
     registrationId: { type: String, required: true },
@@ -43,3 +49,5 @@ export const RegistrationAuditSchema = new Schema<RegistrationAudit>({
 });
   
 RegistrationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+export const RegistrationModel = model<Registration>('Registration', RegistrationSchema);
