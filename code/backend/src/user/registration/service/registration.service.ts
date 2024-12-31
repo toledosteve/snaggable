@@ -197,6 +197,34 @@ export class RegistrationService {
         return { urls: uploadedUrls };
     }
 
+    async getState(registrationId: string): Promise<{ 
+        phoneNumber: string;
+        isPhoneVerified: boolean;
+        currentStep: string;
+      }> {
+        // Find the registration by ID and check if it is valid
+        const registration = await this.registrationModel.findOne({
+          registrationId,
+          expiresAt: { $gte: new Date() }, // Ensure the registration is not expired
+        });
+      
+        if (!registration) {
+          throw new Error("Invalid or expired registration ID.");
+        }
+      
+        // Determine the current step based on the steps completed
+        const nextStep = registration.stepsCompleted.length < stepsOrder.length
+          ? stepsOrder[registration.stepsCompleted.length]
+          : "complete"; // If all steps are completed, return "complete"
+      
+        return {
+          phoneNumber: registration.phoneNumber,
+          isPhoneVerified: registration.phoneVerified,
+          currentStep: nextStep,
+        };
+      }
+      
+
     async cleanupExpiredRegistrations(): Promise<void> {
         const expiredRegistrations = await this.registrationModel.find({
             expiresAt: { $lt: new Date() },

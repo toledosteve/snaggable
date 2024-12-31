@@ -19,7 +19,7 @@ export class VerifyPhoneDto {
   code: string;
 }
 
-export class CompleteRegistrationDto {
+export class RegistrationDto {
   @IsString()
   @IsUUID(4)
   registrationId: string;

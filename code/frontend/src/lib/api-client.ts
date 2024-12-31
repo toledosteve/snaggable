@@ -8,11 +8,19 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
 
   let accessToken = await AuthService.getAccessToken();
 
+  // Authenticate if no accessToken or refreshToken is available
   if (!accessToken) {
     try {
-      accessToken = await AuthService.refreshAccessToken();
+      const refreshToken = await AuthService.getRefreshToken();
+      if (refreshToken) {
+        accessToken = await AuthService.refreshAccessToken();
+      } else {
+        // Start the authentication process
+        const { accessToken: newAccessToken } = await AuthService.authenticate();
+        accessToken = newAccessToken;
+      }
     } catch (error) {
-      console.error("Unable to refresh token:", error);
+      console.error("Unable to authenticate or refresh token:", error);
       throw new Error("Unauthorized");
     }
   }
@@ -25,9 +33,10 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     headers,
   });
 
+  // Handle 401 Unauthorized
   if (response.status === 401) {
-    // Try refreshing the token
     try {
+      // Refresh access token and retry the request
       accessToken = await AuthService.refreshAccessToken();
       headers["Authorization"] = `Bearer ${accessToken}`;
       return fetch(`${process.env.API_ENDPOINT}${url}`, { ...options, headers });

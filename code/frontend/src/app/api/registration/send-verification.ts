@@ -2,7 +2,7 @@
 
 import { createCookie } from "@/lib/session";
 import { z } from "zod";
-import { apiFetch } from "../api-client";
+import { apiFetch } from "../../../lib/api-client";
 
 // Server-side validation schema
 const PhoneNumberSchema = z.object({
@@ -20,12 +20,13 @@ export async function sendVerification(data: { countryCode: string; phoneNumber:
 
   const { countryCode, phoneNumber } = validation.data;
   const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+  const loginMethod = "phone";
 
   try {
-    const response = await apiFetch(`${process.env.API_ENDPOINT}/user/register/start`, {
+    const response = await apiFetch(`/user/register/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phoneNumber: fullPhoneNumber }),
+      body: JSON.stringify({ phoneNumber: fullPhoneNumber, loginMethod: loginMethod }),
     });
 
     if (!response.ok) {
@@ -36,7 +37,7 @@ export async function sendVerification(data: { countryCode: string; phoneNumber:
     const { registrationId } = await response.json();
 
     // Create the session for registration
-    await createCookie("registration", { registrationId }, { expiresIn: 30 * 60 * 1000 });
+    await createCookie("registration", { registrationId: registrationId }, { expiresIn: 30 * 60 * 1000 });
 
     return null; // No errors
   } catch (error) {

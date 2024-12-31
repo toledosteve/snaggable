@@ -5,32 +5,26 @@ import { redirect } from "next/navigation";
 import OTPForm from "./form";
 import ResendLink from "./resend-link";
 import { RegistrationSession } from "@/types/registration";
-import { JWTPayload } from "jose";
-
-async function validateSession(): Promise<RegistrationSession> {
-  const sessionCookie = await getCookie("registration_session");
-  const registrationSession = await decrypt(sessionCookie);
-
-  // Check if the session is valid and matches the RegistrationSession type
-  if (!registrationSession || !isRegistrationSession(registrationSession)) {
-    redirect("/registration/get-started");
-  }
-
-  // Redirect if phone is already verified
-  if (registrationSession.phoneVerified) {
-    redirect("/registration/enter-name");
-  }
-
-  // Return the validated session
-  return registrationSession;
-}
+import { apiFetch } from "@/lib/api-client";
 
 export default async function VerifyPhonePage() {
-  const registrationSession = await validateSession();
+  const response = await apiFetch(`/user/register/state`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store", 
+  });
 
-  const maskedPhoneNumber = registrationSession.phoneNumber.replace(
+  if (!response.ok) {
+    throw new Error("Invalid session");
+  }
+
+  const { phoneNumber } = await response.json();
+
+  const maskedPhoneNumber = phoneNumber.replace(
     /^(\+\d{1,3})(.*)(\d{4})$/,
-    (_, countryCode, hidden, lastFour) =>
+    (countryCode: string, hidden: string, lastFour: string): string =>
       `${countryCode} (XXX) XXX-${lastFour}`
   );
 

@@ -1,5 +1,5 @@
-import { Controller, Post, Body, BadRequestException, HttpCode, UseInterceptors, UploadedFiles, UseGuards } from '@nestjs/common';
-import { CompleteRegistrationDto, CreateRegistrationDto, VerifyPhoneDto } from './dto/registration.dto';
+import { Controller, Post, Body, BadRequestException, HttpCode, UseInterceptors, UploadedFiles, UseGuards, Get } from '@nestjs/common';
+import { CreateRegistrationDto, RegistrationDto, VerifyPhoneDto } from './dto/registration.dto';
 import { RegistrationService } from './service/registration.service';
 import { stepsRegistry } from './config/steps.config';
 import { plainToInstance } from 'class-transformer';
@@ -81,6 +81,7 @@ export class RegistrationController {
     }
 
     @Post("upload-photos")
+    @HttpCode(200)
     @UseInterceptors(FilesInterceptor("photos", 6, { limits: { fileSize: 5 * 1024 * 1024 }}))
     async uploadPhotos(
         @UploadedFiles() files: Express.Multer.File[],
@@ -104,10 +105,21 @@ export class RegistrationController {
 
     @Post("complete")
     @HttpCode(200)
-    async completeRegistration(@Body() completeRegistrationDto: CompleteRegistrationDto) {
+    async completeRegistration(@Body() registrationDto: RegistrationDto) {
         try {
-            await this.registrationService.complete(completeRegistrationDto.registrationId);
+            await this.registrationService.complete(registrationDto.registrationId);
             return { message: 'Registration completed successfully.' };
+        } catch (error) {
+            throw new BadRequestException(error.message);
+        }
+    }
+
+    @Get("state")
+    @HttpCode(200)
+    async getRegistrationState(@Body() registrationDto: RegistrationDto) {
+        try {
+            const state = await this.registrationService.getState(registrationDto.registrationId);
+            return { state };
         } catch (error) {
             throw new BadRequestException(error.message);
         }
