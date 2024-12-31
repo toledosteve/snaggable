@@ -1,9 +1,13 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { TokenBlacklistService } from '../token-blacklist.service';
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
-    constructor(private readonly jwtService: JwtService) {}
+    constructor(
+        private readonly jwtService: JwtService,
+        private readonly blacklistService: TokenBlacklistService
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
@@ -11,6 +15,11 @@ export class AccessTokenGuard implements CanActivate {
 
         if (!token) {
             throw new UnauthorizedException('Access token is missing');
+        }
+
+        const isBlacklisted = await this.blacklistService.isRevoked(token);
+        if (isBlacklisted) {
+        throw new UnauthorizedException('Token is revoked.');
         }
 
         try {

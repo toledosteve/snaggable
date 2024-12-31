@@ -34,6 +34,6 @@ import { ClientService } from './client.service';
     ],
     controllers: [AuthController],
     providers: [AuthService, TokenBlacklistService, ClientAuthService, ClientService],
-    exports: [PassportModule, JwtModule],
+    exports: [PassportModule, JwtModule, TokenBlacklistService],
 })
 export class AuthModule {}

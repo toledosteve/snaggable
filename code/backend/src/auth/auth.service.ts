@@ -28,6 +28,12 @@ export class AuthService {
     }
 
     async refreshToken(refreshToken: string): Promise<string> {
+        const isBlacklisted = await this.blacklistService.isRevoked(refreshToken);
+
+        if (isBlacklisted) {
+            throw new Error('Refresh token is revoked.');
+        }
+
         try {
             const payload = this.jwtService.verify(refreshToken, {
                 secret: this.configService.get<string>('auth.refreshTokenSecret'),

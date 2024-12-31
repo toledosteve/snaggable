@@ -8,6 +8,7 @@ import { UserSchema } from './schema/user.schema';
 import { UserService } from './user.service';
 import { PhotoModule } from 'src/photo/photo.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { UserController } from './user.controller';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { AuthModule } from 'src/auth/auth.module';
     ]),
     PhotoModule.register('local'),
   ],
-  controllers: [RegistrationController],
+  controllers: [RegistrationController, UserController],
   providers: [RegistrationService, UserService]
 })
 export class UserModule {}
