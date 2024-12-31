@@ -27,7 +27,6 @@ export class GenderDto {
 }
 
 export class ShowGenderDto {
-    @IsString()
     @IsBoolean()
     showGender: boolean;
 }
@@ -39,7 +38,7 @@ export class PhotosDto {
 
 export class LocationDto {
     @IsNumber()
-    latittude: number;
+    latitude: number;
 
     @IsNumber()
     longitude: number;

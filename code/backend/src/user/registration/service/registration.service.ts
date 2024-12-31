@@ -138,6 +138,10 @@ export class RegistrationService {
 
         const registrationData = Object.fromEntries(registration.registrationData);
 
+        if (!registrationData.pledge || registrationData.pledge.acceptPledge !== true) {
+            throw new Error('Pledge must be accepted before completing registration.');
+        }
+
         const createUserDto: CreateUserDto = {
             userId: registrationId,
             phoneNumber: registrationData.phoneNumber,
@@ -147,8 +151,8 @@ export class RegistrationService {
             gender: typeof registrationData.gender === 'object' ? registrationData.gender.gender : registrationData.gender,
             photos: registrationData.photos || [],
             location: registrationData.location || null,
-            showGender: registrationData.showGender ?? true, 
-            acceptPledge: registrationData.acceptPledge ?? false,
+            showGender: registrationData.showGender.showGender ?? true, 
+            acceptPledge: registrationData.pledge.acceptPledge ?? false,
         };
 
         const user = await this.userService.create(createUserDto);

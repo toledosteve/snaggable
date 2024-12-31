@@ -7,9 +7,11 @@ import { RegistrationSchema, RegistrationAuditSchema } from './registration/sche
 import { UserSchema } from './schema/user.schema';
 import { UserService } from './user.service';
 import { PhotoModule } from 'src/photo/photo.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule,
     VerificationModule.register('sinch'),
     MongooseModule.forFeature([
       { name: 'Registration', schema: RegistrationSchema },

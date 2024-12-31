@@ -1,4 +1,4 @@
-import { Controller, Post, Body, BadRequestException, HttpCode, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, HttpCode, UseInterceptors, UploadedFiles, UseGuards } from '@nestjs/common';
 import { CompleteRegistrationDto, CreateRegistrationDto, VerifyPhoneDto } from './dto/registration.dto';
 import { RegistrationService } from './service/registration.service';
 import { stepsRegistry } from './config/steps.config';
@@ -6,8 +6,10 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { PhotosDto } from './dto/steps.dto';
+import { AccessTokenGuard } from 'src/auth/guards/access-token.guard';
 
 @Controller('user/register')
+@UseGuards(AccessTokenGuard)
 export class RegistrationController {
     constructor(private readonly registrationService: RegistrationService) {}
 

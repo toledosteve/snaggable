@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PhotoModule } from './photo/photo.module';
+import { AuthModule } from './auth/auth.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -21,7 +22,8 @@ import configuration from './config/configuration';
       }),
     }),
     UserModule,
-    PhotoModule
+    PhotoModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],

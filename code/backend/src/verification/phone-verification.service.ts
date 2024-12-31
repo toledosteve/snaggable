@@ -20,7 +20,7 @@ export class PhoneVerificationService {
         try {
           return await this.provider.validateVerification(verificationId, code);
         } catch (error) {
-          throw new Error(`Failed to validate verification: ${error.message}`);
+          throw new Error(`Failed to validate verification code`);
         }
       }
 }
