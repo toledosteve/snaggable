@@ -10,6 +10,13 @@ services:
       - ./data/mongo:/data/db
     networks:
       - snaggable
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - snaggable
     
   backend:
     build:
