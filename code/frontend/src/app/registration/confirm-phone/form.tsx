@@ -18,8 +18,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui";
+import { getRouteForNextStep } from "@/lib/registration";
 
-// Validation schema for OTP
 const OtpSchema = z.object({
   otp: z.string().length(4, "OTP must be exactly 4 digits"),
 });
@@ -43,8 +43,18 @@ export default function OTPForm() {
         return;
       }
 
-      // Redirect to the next step on success
-      router.push("/registration/enter-name");
+      const stateResponse = await fetch("/user/register/state", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (stateResponse.ok) {
+        const { currentStep } = await stateResponse.json();
+        const nextRoute = getRouteForNextStep(currentStep);
+        router.push(nextRoute);
+      } else {
+        router.push("/registration/enter-name");
+      }
     } catch (error) {
       console.error("Error verifying OTP:", error);
       form.setError("otp", { message: "An unexpected error occurred. Please try again." });

@@ -1,4 +1,4 @@
-import { Injectable, ValidationPipe } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Registration, RegistrationAudit } from '../schema/registration.schema';
@@ -8,6 +8,8 @@ import { User } from 'src/user/schema/user.schema';
 import { stepsRegistry, stepsOrder } from '../config/steps.config';
 import { CreateUserDto } from 'src/user/dto/user.dto';
 import { PhotoService } from 'src/photo/photo-upload.service';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 @Injectable()
 export class RegistrationService {
@@ -30,7 +32,7 @@ export class RegistrationService {
             verificationId,
             verificationStatus: 'pending',
             phoneVerified: false,
-            stepsCompleted: [],
+            stepsCompleted: ["start"],
             registrationData: {},
             loginMethod,
             createdAt: new Date(),
@@ -41,23 +43,22 @@ export class RegistrationService {
     }
 
     async resendOtp(registrationId: string): Promise<void> {
-        const registration = await this.registrationModel.findOne({ 
+        const registration = await this.registrationModel.findOne({
             registrationId,
             verificationStatus: 'pending',
             expiresAt: { $gte: new Date() },
         });
-
+    
         if (!registration) {
-            throw new Error('Invalid registration ID');
+            throw new Error('Invalid or expired registration ID');
         }
-
+    
         if (registration.verificationStatus !== 'pending') {
             throw new Error('Cannot resend OTP for a non-pending verification');
         }
-
+    
         const newVerificationId = await this.verificationService.sendVerification(registration.phoneNumber);
         registration.verificationId = newVerificationId;
-        registration.verificationStatus = 'pending';
         registration.updatedAt = new Date();
         await registration.save();
     }
@@ -77,6 +78,10 @@ export class RegistrationService {
 
         if (!isValid) {
             throw new Error('Invalid verification code');
+        }
+
+        if (!registration.stepsCompleted.includes("confirm_phone")) {
+            registration.stepsCompleted.push("confirm_phone");
         }
 
         registration.verificationStatus = 'verified';
@@ -128,19 +133,12 @@ export class RegistrationService {
         if (!registration) {
             throw new Error('Invalid registration ID');
         }
-    
-        const requiredSteps = Object.keys(stepsRegistry);
-        const missingSteps = requiredSteps.filter(step => !registration.stepsCompleted.includes(step));
-    
-        if (missingSteps.length > 0) {
-            throw new Error(`Missing steps: ${missingSteps.join(', ')}`);
-        }
 
         const registrationData = Object.fromEntries(registration.registrationData);
 
-        if (!registrationData.pledge || registrationData.pledge.acceptPledge !== true) {
-            throw new Error('Pledge must be accepted before completing registration.');
-        }
+        const photos = Array.isArray(registrationData.photos?.photos)
+            ? registrationData.photos.photos
+            : registrationData.photos || [];
 
         const createUserDto: CreateUserDto = {
             userId: registrationId,
@@ -149,9 +147,9 @@ export class RegistrationService {
             name: typeof registrationData.name === 'object' ? registrationData.name.name : registrationData.name,
             dob: typeof registrationData.dob === 'object' ? registrationData.dob : null,
             gender: typeof registrationData.gender === 'object' ? registrationData.gender.gender : registrationData.gender,
-            photos: registrationData.photos || [],
+            photos: photos,
             location: registrationData.location || null,
-            showGender: registrationData.showGender.showGender ?? true, 
+            showGender: registrationData.show_gender.showGender ?? true, 
             acceptPledge: registrationData.pledge.acceptPledge ?? false,
         };
 
@@ -187,10 +185,10 @@ export class RegistrationService {
             uploadedUrls.push(url);
         }
 
-        registration.registrationData.set('photos', uploadedUrls);
+        registration.registrationData.set('photos', { photos: uploadedUrls }); 
         if (!registration.stepsCompleted.includes('photos')) {
             registration.stepsCompleted.push('photos');
-          }
+        }
         registration.updatedAt = new Date();
         await registration.save();
 
@@ -201,30 +199,41 @@ export class RegistrationService {
         phoneNumber: string;
         isPhoneVerified: boolean;
         currentStep: string;
+        nextStep: string | undefined;
+        description: string;
+        registrationData: Record<string, any>; 
       }> {
-        // Find the registration by ID and check if it is valid
         const registration = await this.registrationModel.findOne({
           registrationId,
-          expiresAt: { $gte: new Date() }, // Ensure the registration is not expired
+          expiresAt: { $gte: new Date() },
         });
       
         if (!registration) {
           throw new Error("Invalid or expired registration ID.");
         }
       
-        // Determine the current step based on the steps completed
-        const nextStep = registration.stepsCompleted.length < stepsOrder.length
-          ? stepsOrder[registration.stepsCompleted.length]
-          : "complete"; // If all steps are completed, return "complete"
+        const currentStepKey =
+          registration.stepsCompleted.length < stepsOrder.length
+            ? stepsOrder[registration.stepsCompleted.length]
+            : "complete";
+
+        const nextStepKey =
+            registration.stepsCompleted.length < stepsOrder.length
+              ? stepsOrder[registration.stepsCompleted.length+1]
+              : undefined;
+      
+        const currentStepInfo = stepsRegistry[currentStepKey];
       
         return {
           phoneNumber: registration.phoneNumber,
           isPhoneVerified: registration.phoneVerified,
-          currentStep: nextStep,
+          currentStep: currentStepKey,
+          description: currentStepInfo?.description || "Complete",
+          nextStep: nextStepKey,
+          registrationData: Object.fromEntries(registration.registrationData), // Ensure this field is returned
         };
-      }
+    }      
       
-
     async cleanupExpiredRegistrations(): Promise<void> {
         const expiredRegistrations = await this.registrationModel.find({
             expiresAt: { $lt: new Date() },

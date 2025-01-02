@@ -17,7 +17,6 @@ export class AuthService {
 
     const { accessToken, refreshToken } = await response.json();
 
-    // Store tokens securely
     await createCookie("access_token", { token: accessToken }, { expiresIn: 15 * 60 * 1000 }); 
     await createCookie("refresh_token", { token: refreshToken }, { expiresIn: 7 * 24 * 60 * 60 * 1000 }); 
 

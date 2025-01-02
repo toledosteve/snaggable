@@ -4,17 +4,14 @@ import { createCookie } from "@/lib/session";
 import { z } from "zod";
 import { apiFetch } from "../../../lib/api-client";
 
-// Server-side validation schema
 const PhoneNumberSchema = z.object({
   countryCode: z.string().min(1, "Country code is required."),
   phoneNumber: z.string().regex(/^\d+$/, "Must be a valid phone number."),
 });
 
 export async function sendVerification(data: { countryCode: string; phoneNumber: string }) {
-  // Validate the data using zod
   const validation = PhoneNumberSchema.safeParse(data);
   if (!validation.success) {
-    // Return errors in a consistent format for the client
     return { message: validation.error.errors[0].message };
   }
 
@@ -35,11 +32,9 @@ export async function sendVerification(data: { countryCode: string; phoneNumber:
     }
 
     const { registrationId } = await response.json();
+    await createCookie("registration", { registrationId: registrationId }, { expiresIn: 60 * 60 * 1000 });
 
-    // Create the session for registration
-    await createCookie("registration", { registrationId: registrationId }, { expiresIn: 30 * 60 * 1000 });
-
-    return null; // No errors
+    return null; 
   } catch (error) {
     console.error("Error sending verification:", error);
     return { message: "An unexpected error occurred. Please try again." };

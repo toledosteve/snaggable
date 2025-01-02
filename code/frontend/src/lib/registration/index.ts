@@ -1,9 +1,19 @@
-import { RegistrationSession } from "@/types/registration";
-import { JWTPayload } from "jose";
+export const stepRoutes: Record<string, string> = {
+  get_started: "/registration/get-started",
+  confirm_phone: "/registration/confirm-phone",
+  name: "/registration/enter-name",
+  dob: "/registration/enter-dob",
+  gender: "/registration/gender",
+  show_gender: "/registration/show-gender",
+  photos: "/registration/upload-photos",
+  location: "/registration/location",
+  pledge: "/registration/pledge",
+}
 
-export function isRegistrationSession(payload: JWTPayload): payload is RegistrationSession {
-  return (
-    typeof payload.phoneNumber === "string" &&
-    (payload.phoneVerified === undefined || typeof payload.phoneVerified === "boolean")
-  );
+export function getRouteForNextStep(step: string): string {
+  const route = stepRoutes[step];
+  if (!route) {
+    throw new Error(`No route found for step: ${step}`);
+  }
+  return route;
 }

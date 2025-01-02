@@ -1,18 +1,26 @@
 import { Progress } from "@/components/ui";
-import { decrypt, getCookie } from "@/lib/session";
-import { isRegistrationSession } from "@/lib/registration";
-import { redirect } from "next/navigation";
 import OTPForm from "./form";
 import ResendLink from "./resend-link";
-import { RegistrationSession } from "@/types/registration";
 import { apiFetch } from "@/lib/api-client";
+import { getRegistrationSession } from "@/lib/session";
+
+function maskPhoneNumber(phoneNumber: string): string {
+  return phoneNumber.replace(
+    /^(\+\d{1,3})(.*)(\d{4})$/,
+    (_, countryCode, hidden, lastFour) => `${countryCode} (XXX) XXX-${lastFour}`
+  );
+}
 
 export default async function VerifyPhonePage() {
+  const registrationSession = await getRegistrationSession();
+  const registrationId = registrationSession.registrationId;
+
   const response = await apiFetch(`/user/register/state`, {
-    method: "GET",
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    body: JSON.stringify({ registrationId }),
     cache: "no-store", 
   });
 
@@ -20,13 +28,14 @@ export default async function VerifyPhonePage() {
     throw new Error("Invalid session");
   }
 
-  const { phoneNumber } = await response.json();
+  const { state } = await response.json();
 
-  const maskedPhoneNumber = phoneNumber.replace(
-    /^(\+\d{1,3})(.*)(\d{4})$/,
-    (countryCode: string, hidden: string, lastFour: string): string =>
-      `${countryCode} (XXX) XXX-${lastFour}`
-  );
+  if (!state || !state.phoneNumber) {
+    throw new Error("Phone number is missing from the registration state.");
+  }
+
+  const { phoneNumber } = state;
+  const maskedPhoneNumber = maskPhoneNumber(phoneNumber);
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-white">

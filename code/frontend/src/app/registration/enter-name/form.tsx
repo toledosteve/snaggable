@@ -4,7 +4,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { updateRegistrationSession } from "@/app/api/registration/update-registration";
 import { Button, Input } from "@/components/ui";
 import {
   Form,
@@ -13,8 +12,8 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
+import { saveStep } from "@/app/api/registration/save-step";
 
-// Validation schema
 const NameSchema = z.object({
   name: z.string().min(1, "Name is required."),
 });
@@ -31,10 +30,11 @@ export default function NameForm() {
 
   async function onSubmit(data: z.infer<typeof NameSchema>) {
     try {
-      // Update the registration session
-      await updateRegistrationSession({ name: data.name });
+      await saveStep({
+        step: "name",
+        data: { name: data.name },
+      });
 
-      // Redirect to the next step
       router.push("/registration/enter-dob");
     } catch (error) {
       console.error("Error updating name:", error);

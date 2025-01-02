@@ -8,7 +8,6 @@ const PledgePage = () => {
   const router = useRouter();
 
   const handleAgree = () => {
-    // Redirect to the next step
     router.push("/registration/next-step");
   };
 

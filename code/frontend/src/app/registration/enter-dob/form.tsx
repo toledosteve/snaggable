@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { updateRegistrationSession } from "@/app/api/registration/update-registration";
+import { updateRegistrationSession } from "@/app/api/registration/save-step";
 import { useRouter } from "next/navigation";
 import DatePicker, { DatePickerValue } from "@/components/ui/date-picker";
 import {

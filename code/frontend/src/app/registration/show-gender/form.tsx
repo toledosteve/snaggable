@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { updateRegistrationSession } from "@/app/api/registration/update-registration";
+import { updateRegistrationSession } from "@/app/api/registration/save-step";
 import {
   Form,
   FormField,

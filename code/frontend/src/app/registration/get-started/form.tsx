@@ -8,7 +8,6 @@ import { sendVerification } from "@/app/api/registration/send-verification";
 import { Input, Button, Select, SelectTrigger, SelectContent, SelectValue, SelectItem } from "@/components/ui";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 
-// Validation schema
 const PhoneNumberSchema = z.object({
   countryCode: z.string().min(1, "Country code is required."),
   phoneNumber: z.string().regex(/^\d+$/, "Must be a valid phone number."),
@@ -34,7 +33,6 @@ export default function PhoneNumberForm() {
         return;
       }
 
-      // Redirect on success
       router.push("/registration/confirm-phone");
     } catch (error) {
       console.error("Error submitting phone number:", error);
@@ -46,7 +44,6 @@ export default function PhoneNumberForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="flex items-center space-x-2">
-          {/* Country Code Selector */}
           <FormField
             control={form.control}
             name="countryCode"
@@ -68,7 +65,6 @@ export default function PhoneNumberForm() {
             )}
           />
 
-          {/* Phone Number Input */}
           <FormField
             control={form.control}
             name="phoneNumber"
@@ -86,14 +82,12 @@ export default function PhoneNumberForm() {
           />
         </div>
 
-        {/* Error Message */}
         {form.formState.errors.phoneNumber && (
           <p className="text-red-500 text-sm text-center mt-2">
             {form.formState.errors.phoneNumber.message}
           </p>
         )}
 
-        {/* Submit Button */}
         <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Sending..." : "Continue"}
         </Button>

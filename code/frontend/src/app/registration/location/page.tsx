@@ -34,10 +34,8 @@ const LocationAccessPage = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-white">
       <div className="max-w-md w-full text-center">
-        {/* Progress Bar */}
         <Progress value={88} className="mb-6" />
 
-        {/* Location Access Text */}
         <h1 className="text-2xl font-bold mb-4">
           We need your location to show who’s nearby
         </h1>
@@ -45,7 +43,6 @@ const LocationAccessPage = () => {
           Grant us access to your location so we can show you awesome matches in your area.
         </p>
 
-        {/* Location Access Modal */}
         <LocationAccessModal />
       </div>
     </div>

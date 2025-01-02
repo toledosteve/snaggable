@@ -1,13 +1,5 @@
-export interface RegistrationSession {
-    phoneNumber: string;
-    verificationId: string;
-    phoneVerified?: boolean;
-    namee?: string;
-    dob?: {
-      day: number;
-      month: string;
-      year: number;
-    };
-    [key: string]: unknown;        
-  }
-  
+import { JWTPayload } from "jose";
+
+export interface RegistrationSession extends JWTPayload {
+  registrationId: string;
+}

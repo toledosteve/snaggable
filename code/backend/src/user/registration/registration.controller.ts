@@ -46,9 +46,14 @@ export class RegistrationController {
     async saveStep(@Body() saveStepDto: any) {
         const { registrationId, step, data } = saveStepDto;
 
-        const StepDto = stepsRegistry[step];
-        if (!StepDto) {
+        const stepInfo = stepsRegistry[step];
+        if (!stepInfo) {
             throw new BadRequestException(`Invalid step: ${step}`);
+        }
+
+        const StepDto = stepInfo.dto;
+        if (!StepDto) {
+            throw new BadRequestException(`No DTO defined for step: ${step}`);
         }
 
         if (saveStepDto.step === 'photos') {
@@ -85,14 +90,14 @@ export class RegistrationController {
     @UseInterceptors(FilesInterceptor("photos", 6, { limits: { fileSize: 5 * 1024 * 1024 }}))
     async uploadPhotos(
         @UploadedFiles() files: Express.Multer.File[],
-        @Body() body: PhotosDto
+        @Body() body: { registrationId: string }
     ) {
         if (!files || files.length === 0) {
             throw new BadRequestException('No files were uploaded.');
         }
 
-        if (!body.registrationId) {
-            throw new BadRequestException('Registration ID is required.');
+        if (!body.registrationId || typeof body.registrationId !== "string") {
+            throw new BadRequestException('A valid Registration ID is required.');
         }
 
         try {
@@ -107,19 +112,73 @@ export class RegistrationController {
     @HttpCode(200)
     async completeRegistration(@Body() registrationDto: RegistrationDto) {
         try {
+            const registration = await this.registrationService.getState(registrationDto.registrationId);
+    
+            const requiredSteps = Object.keys(stepsRegistry).filter(
+                (step) => stepsRegistry[step].isRequired
+            );
+    
+            const registrationData = registration.registrationData;
+    
+            for (const stepKey of requiredSteps) {
+                const stepInfo = stepsRegistry[stepKey];
+    
+                if (!stepInfo.dto) {
+                    continue;
+                }
+    
+                if (!registrationData[stepKey]) {
+                    throw new BadRequestException(`Data for step "${stepKey}" is missing.`);
+                }
+    
+                const dtoInstance = plainToInstance(stepInfo.dto, registrationData[stepKey]);
+                const validationErrors = await validate(dtoInstance, {
+                    whitelist: true,
+                    forbidNonWhitelisted: true,
+                });
+    
+                if (validationErrors.length > 0) {
+                    const formattedErrors = validationErrors.reduce((acc, err) => {
+                        acc[err.property] = Object.values(err.constraints || {});
+                        return acc;
+                    }, {} as Record<string, string[]>);
+    
+                    throw new BadRequestException({
+                        message: `Validation failed for step "${stepKey}"`,
+                        errors: formattedErrors,
+                    });
+                }
+            }
+    
             await this.registrationService.complete(registrationDto.registrationId);
+    
             return { message: 'Registration completed successfully.' };
         } catch (error) {
             throw new BadRequestException(error.message);
         }
     }
 
-    @Get("state")
+    @Post("state")
     @HttpCode(200)
     async getRegistrationState(@Body() registrationDto: RegistrationDto) {
         try {
             const state = await this.registrationService.getState(registrationDto.registrationId);
             return { state };
+        } catch (error) {
+            throw new BadRequestException(error.message);
+        }
+    }
+
+    @Post("resend-otp")
+    @HttpCode(200)
+    async resendOtp(@Body() { registrationId }: { registrationId: string }): Promise<{ message: string }> {
+        if (!registrationId || typeof registrationId !== "string") {
+            throw new BadRequestException('A valid Registration ID is required.');
+        }
+
+        try {
+            await this.registrationService.resendOtp(registrationId);
+            return { message: 'OTP resent successfully.'};
         } catch (error) {
             throw new BadRequestException(error.message);
         }

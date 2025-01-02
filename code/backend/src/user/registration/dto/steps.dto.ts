@@ -1,4 +1,4 @@
-import { IsNumber, IsString, Max, Min, IsIn, IsBoolean } from "class-validator";
+import { IsNumber, IsString, Max, Min, IsIn, IsBoolean, IsArray, ArrayNotEmpty } from "class-validator";
 
 export class NameDto {
     @IsString()
@@ -32,8 +32,10 @@ export class ShowGenderDto {
 }
 
 export class PhotosDto {
-    @IsString()
-    registrationId: string;
+    @IsArray()
+    @ArrayNotEmpty()
+    @IsString({ each: true })
+    photos: string[];
 }
 
 export class LocationDto {
