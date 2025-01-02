@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { updateRegistrationSession } from "@/app/api/registration/save-step";
+import { saveStep } from "@/app/api/registration/save-step";
 import { useRouter } from "next/navigation";
 import DatePicker, { DatePickerValue } from "@/components/ui/date-picker";
 import {
@@ -43,14 +43,15 @@ export default function DOBForm() {
 
   const onSubmit = async (data: z.infer<typeof DOBSchema>) => {
     try {
-      // Call API to update registration session
-      await updateRegistrationSession({ dob: data.dob });
+      await saveStep({
+        step: "dob",
+        data: { ... data.dob },
+      });
 
-      // Redirect to the next step
       router.push("/registration/gender");
     } catch (error) {
-      console.error("Error updating registration session:", error);
-      form.setError("dob", { message: "An unexpected error occurred. Please try again." });
+      console.error("Error updating date of birth:", error);
+      form.setError("dob", { message: "An unexpected error occurred." });
     }
   };
 
@@ -59,12 +60,11 @@ export default function DOBForm() {
     value: string | number | undefined
   ) => {
     if (value !== undefined && value !== null) {
-      form.clearErrors(`dob`); // Clear specific field errors
-      form.setValue(`dob.${field}`, value, { shouldValidate: false }); // Validate only the current field
+      form.clearErrors(`dob`); 
+      form.setValue(`dob.${field}`, value, { shouldValidate: false });
     }
   };
 
-  // Focus on the first validation error
   const errorMessage =
     form.formState.errors.dob?.month?.message ||
     form.formState.errors.dob?.day?.message ||
@@ -82,8 +82,8 @@ export default function DOBForm() {
                 <DatePicker
                   value={field.value}
                   onChange={(field, value) => handleFieldChange(field, value)}
-                  disableDay={!field.value.month} // Disable day until month is selected
-                  disableYear={!field.value.day} // Disable year until day is selected
+                  disableDay={!field.value.month} 
+                  disableYear={!field.value.day} 
                 />
               </FormControl>
               <div className="text-red-500 text-sm mt-2">

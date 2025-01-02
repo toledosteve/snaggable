@@ -4,7 +4,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { updateRegistrationSession } from "@/app/api/registration/save-step";
 import {
   Form,
   FormField,
@@ -12,46 +11,78 @@ import {
   FormControl,
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem, Switch, Button } from "@/components/ui";
+import { saveStep } from "@/app/api/registration/save-step";
+import { useEffect, useState } from "react";
+import { getRegistrationState } from "@/app/api/registration/get-registration-state";
 
-// Validation schema for Show Gender
 const ShowGenderSchema = z.object({
   gender: z.string().min(1, { message: "Gender is required" }),
   isVisible: z.boolean(),
 });
 
 export default function ShowGenderForm() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialValues, setInitialValues] = useState({
+    gender: "",
+    isVisible: true,
+  });
+
   const form = useForm<z.infer<typeof ShowGenderSchema>>({
     resolver: zodResolver(ShowGenderSchema),
     defaultValues: {
-      gender: "Man", // Default gender
-      isVisible: true, // Default visibility
+      gender: "", 
+      isVisible: true, 
     },
   });
 
   const router = useRouter();
 
+  useEffect(() => {
+    async function fetchState() {
+      try {
+        const state = await getRegistrationState();
+        const gender = state.registrationData?.gender?.gender || "";
+        const isVisible = state.registrationData?.showGender?.showGender ?? true;
+
+        setInitialValues({ gender, isVisible });
+        form.reset({ gender, isVisible });
+      } catch (error) {
+        console.error("Failed to fetch registration state:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchState();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      form.reset(initialValues);
+    }
+  }, [isLoading, initialValues, form]);
+
   const onSubmit = async (data: z.infer<typeof ShowGenderSchema>) => {
     try {
-      console.log("Selected Gender:", data.gender);
-      console.log("Visibility:", data.isVisible);
-
-      // Update the registration session with gender visibility
-      await updateRegistrationSession({ gender: data.gender, isVisible: data.isVisible });
-
-      // Redirect to the next step
-      router.push("/registration/upload-photos");
-    } catch (error) {
-      console.error("Error updating registration session:", error);
-      form.setError("gender", {
-        message: "An unexpected error occurred. Please try again.",
+      await saveStep({
+        step: "show_gender",
+        data: { showGender: data.isVisible },
       });
+
+      router.push("/registration/show-gender");
+    } catch (error) {
+      console.error("Error updating gender visibility:", error);
+      form.setError("isVisible", { message: "An unexpected error occurred." });
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Visibility Toggle */}
         <FormField
           control={form.control}
           name="isVisible"
@@ -71,7 +102,6 @@ export default function ShowGenderForm() {
           )}
         />
 
-        {/* Gender Selection */}
         <FormField
           control={form.control}
           name="gender"
@@ -79,33 +109,42 @@ export default function ShowGenderForm() {
             <FormItem>
               <FormControl>
                 <RadioGroup
-                  value={field.value}
+                  value={field.value} 
                   onValueChange={(value) => field.onChange(value)}
                   className="space-y-4"
                 >
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="man" value="Man" />
+                    <RadioGroupItem
+                      id="man"
+                      value="Uncle" 
+                      disabled
+                    />
                     <label htmlFor="man" className="text-sm">
                       Man
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="woman" value="Woman" />
+                    <RadioGroupItem
+                      id="woman"
+                      value="Auntie" 
+                      disabled
+                    />
                     <label htmlFor="woman" className="text-sm">
                       Woman
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="nonbinary" value="Nonbinary" />
+                    <RadioGroupItem
+                      id="nonbinary"
+                      value="Two Spirit" 
+                      disabled
+                    />
                     <label htmlFor="nonbinary" className="text-sm">
                       Nonbinary
                     </label>
                   </div>
                 </RadioGroup>
               </FormControl>
-              <div className="text-red-500 text-sm mt-2">
-                {form.formState.errors.gender?.message}
-              </div>
             </FormItem>
           )}
         />

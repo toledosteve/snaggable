@@ -4,7 +4,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { updateRegistrationSession } from "@/app/api/registration/save-step";
 import {
   Form,
   FormField,
@@ -12,6 +11,7 @@ import {
   FormControl,
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem, Button } from "@/components/ui";
+import { saveStep } from "@/app/api/registration/save-step";
 
 // Validation schema for Gender
 const GenderSchema = z.object({
@@ -30,18 +30,15 @@ export default function GenderForm() {
 
   const onSubmit = async (data: z.infer<typeof GenderSchema>) => {
     try {
-      console.log("Selected Gender:", data.gender);
+      await saveStep({
+        step: "gender",
+        data: { gender: data.gender },
+      });
 
-      // Call API to update registration session
-      await updateRegistrationSession({ gender: data.gender });
-
-      // Redirect to the next step
       router.push("/registration/show-gender");
     } catch (error) {
-      console.error("Error updating registration session:", error);
-      form.setError("gender", {
-        message: "An unexpected error occurred. Please try again.",
-      });
+      console.error("Error updating gender:", error);
+      form.setError("gender", { message: "An unexpected error occurred." });
     }
   };
 
@@ -59,21 +56,21 @@ export default function GenderForm() {
                   onValueChange={(value) => form.setValue("gender", value)}
                 >
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="man" value="Man" />
-                    <label htmlFor="man" className="text-sm">
-                      Man
+                    <RadioGroupItem id="uncle" value="Uncle" />
+                    <label htmlFor="uncle" className="text-sm">
+                      Uncle
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="woman" value="Woman" />
-                    <label htmlFor="woman" className="text-sm">
-                      Woman
+                    <RadioGroupItem id="auntie" value="Auntie" />
+                    <label htmlFor="auntie" className="text-sm">
+                      Auntie
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="nonbinary" value="Nonbinary" />
-                    <label htmlFor="nonbinary" className="text-sm">
-                      Nonbinary
+                    <RadioGroupItem id="2spirit" value="2spirit" />
+                    <label htmlFor="2spirit" className="text-sm">
+                      2 Spirit
                     </label>
                   </div>
                 </RadioGroup>

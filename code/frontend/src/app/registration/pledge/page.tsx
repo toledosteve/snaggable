@@ -3,19 +3,28 @@
 import React from "react";
 import { Button } from "@/components/ui";
 import { useRouter } from "next/navigation";
+import { saveStep } from "@/app/api/registration/save-step";
 
 const PledgePage = () => {
   const router = useRouter();
 
-  const handleAgree = () => {
-    router.push("/registration/next-step");
+  const handleAgree = async () => {
+    try {
+      await saveStep({
+        step: "pledge",
+        data: { acceptPledge: true },
+      });
+
+      router.push("/registration/complete");
+    } catch (error) {
+      console.error("Error handling pledge agreement:", error);
+      alert("An error occurred. Please try again.");
+    }
   };
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-white text-center">
       <div className="max-w-lg w-full">
-
-
         {/* Pledge Text */}
         <h1 className="text-2xl font-bold mb-4">Before you swipe</h1>
         <p className="text-gray-600 mb-4">
@@ -33,9 +42,7 @@ const PledgePage = () => {
             guidelines
           </a>.
         </p>
-        <p className="text-gray-600 mb-6">
-          And remember: We’ve always got your back!
-        </p>
+        <p className="text-gray-600 mb-6">And remember: We’ve always got your back!</p>
         <p className="text-yellow-600 font-medium">With love, The Snaggable Team</p>
 
         {/* Action Button */}

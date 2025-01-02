@@ -77,3 +77,13 @@ export async function getRegistrationSession(): Promise<RegistrationSession> {
   return registrationSession;
 }
 
+export async function deleteRegistrationSession() {
+  try {
+    deleteCookie("registration");
+  } catch (error) {
+    console.error("Failed to delete registration session:", error);
+    throw new Error("Failed to delete registration session.");
+  }
+}
+
+

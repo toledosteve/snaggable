@@ -1,12 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui";
 
-const LocationAccessModal = () => {
-  const router = useRouter();
+interface LocationAccessModalProps {
+  onAllow: () => void;
+}
+
+const LocationAccessModal = ({ onAllow }: LocationAccessModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -16,15 +23,13 @@ const LocationAccessModal = () => {
       return;
     }
 
-    setIsOpen(true); // Show modal
+    setIsOpen(true);
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log("Location granted:", position);
+      () => {
         setErrorMessage(null);
-        setIsOpen(false); // Close modal after successful permission
-        // Navigate to pledge page
-        router.push("/registration/pledge");
+        setIsOpen(false);
+        onAllow();
       },
       (error) => {
         console.error("Error getting location:", error.message);
@@ -35,12 +40,9 @@ const LocationAccessModal = () => {
 
   return (
     <>
-      {/* Trigger Button */}
       <Button variant="default" className="mb-4" onClick={handleLocationAccess}>
         Allow location access
       </Button>
-
-      {/* Modal */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="text-center">
           <DialogHeader>

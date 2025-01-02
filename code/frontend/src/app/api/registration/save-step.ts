@@ -2,7 +2,6 @@
 
 import { apiFetch } from "@/lib/api-client";
 import { getRegistrationSession } from "@/lib/session";
-import { Padauk } from "next/font/google";
 
 interface SaveStepPayload {
   registrationId?: string;

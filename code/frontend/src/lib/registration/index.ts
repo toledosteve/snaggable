@@ -8,6 +8,7 @@ export const stepRoutes: Record<string, string> = {
   photos: "/registration/upload-photos",
   location: "/registration/location",
   pledge: "/registration/pledge",
+  complete: "/registration/complete",
 }
 
 export function getRouteForNextStep(step: string): string {

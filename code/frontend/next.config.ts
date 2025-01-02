@@ -5,8 +5,12 @@ const nextConfig: NextConfig = {
     fetches: {
       fullUrl: true,
     }
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    }
   }
-  /* config options here */
 };
 
 export default nextConfig;
