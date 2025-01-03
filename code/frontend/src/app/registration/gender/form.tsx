@@ -68,7 +68,7 @@ export default function GenderForm() {
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <RadioGroupItem id="2spirit" value="2spirit" />
+                    <RadioGroupItem id="2spirit" value="2 spirit" />
                     <label htmlFor="2spirit" className="text-sm">
                       2 Spirit
                     </label>

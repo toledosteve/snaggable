@@ -19,6 +19,8 @@ const LocationAccessPage = () => {
         name: "geolocation",
       });
 
+      console.log("Permission status:", permissionStatus.state);
+
       if (permissionStatus.state === "granted" && !isSaving) {
         setIsGranted(true);
         await handleSaveLocation();
