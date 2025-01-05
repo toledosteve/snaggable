@@ -13,6 +13,7 @@ import {
   FormControl,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui";
+import { useState } from "react";
 
 // Validation schema for DOB
 const DOBSchema = z.object({
@@ -40,8 +41,10 @@ export default function DOBForm() {
   });
   
   const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (data: z.infer<typeof DOBSchema>) => {
+    setSubmitting(true);
     try {
       await saveStep({
         step: "dob",
@@ -52,6 +55,8 @@ export default function DOBForm() {
     } catch (error) {
       console.error("Error updating date of birth:", error);
       form.setError("dob", { message: "An unexpected error occurred." });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -92,8 +97,8 @@ export default function DOBForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          {form.formState.isSubmitting ? "Submitting..." : "Submit"}
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Submitting..." : "Continue"}
         </Button>
       </form>
     </Form>

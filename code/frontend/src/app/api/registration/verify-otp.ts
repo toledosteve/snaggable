@@ -4,6 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 import { getRegistrationSession } from "@/lib/session";
+import { getRouteForNextStep } from "@/lib/registration";
 
 const OtpSchema = z.object({
   otp: z.string().length(4, "OTP must be exactly 4 digits"),
@@ -38,8 +39,18 @@ export async function verifyOtp(data: { otp: string }) {
       return { message: "Invalid OTP. Please try again." };
     }
 
-    const result = await response.json();
-    return null; 
+    const stateResponse = await apiFetch("/user/register/state", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (stateResponse.ok) {
+      const { currentStep } = await stateResponse.json();
+      const nextRoute = getRouteForNextStep(currentStep);
+      return { nextRoute };
+    }
+
+    return { nextRoute: "/registration/enter-name" };
   } catch (error) {
     console.error("Error verifying OTP:", (error as Error).message);
     return { message: "An unexpected error occurred." };

@@ -9,7 +9,8 @@ import { saveStep } from "@/app/api/registration/save-step";
 const LocationAccessPage = () => {
   const router = useRouter();
   const [isGranted, setIsGranted] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // Guard to prevent duplicate saves
+  const [isSaving, setIsSaving] = useState(false); 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // Track errors
 
   const checkLocationAccess = async () => {
     if (!navigator.permissions) return;
@@ -24,16 +25,17 @@ const LocationAccessPage = () => {
       if (permissionStatus.state === "granted" && !isSaving) {
         setIsGranted(true);
         await handleSaveLocation();
-        router.push("/registration/pledge");
       }
     } catch (error) {
       console.error("Error checking location permission:", error);
+      setErrorMessage("Failed to check location permissions.");
     }
   };
 
   const handleSaveLocation = async () => {
     if (!navigator.geolocation) {
       console.error("Geolocation is not supported by your browser.");
+      setErrorMessage("Geolocation is not supported by your browser.");
       return;
     }
 
@@ -44,18 +46,22 @@ const LocationAccessPage = () => {
       async (position) => {
         const { latitude, longitude, accuracy } = position.coords;
         try {
+          console.log("Saving location:", { latitude, longitude, accuracy });
           await saveStep({
             step: "location",
             data: { latitude, longitude, accuracy },
           });
+          router.push("/registration/pledge"); // Redirect after saving
         } catch (error) {
           console.error("Error saving location:", error);
+          setErrorMessage("Failed to save your location. Please try again.");
         } finally {
           setIsSaving(false); 
         }
       },
       (error) => {
         console.error("Error getting location:", error.message);
+        setErrorMessage("Failed to get your location. Please try again.");
         setIsSaving(false); 
       }
     );
@@ -76,11 +82,13 @@ const LocationAccessPage = () => {
           Grant us access to your location so we can show you awesome matches in
           your area.
         </p>
+        {errorMessage && (
+          <div className="text-red-500 mb-4">{errorMessage}</div>
+        )}
         {!isGranted && (
           <LocationAccessModal
             onAllow={async () => {
               await handleSaveLocation();
-              router.push("/registration/pledge");
             }}
           />
         )}

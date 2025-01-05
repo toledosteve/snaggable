@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { saveStep } from "@/app/api/registration/save-step";
+import { useState } from "react";
 
 const NameSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -27,8 +28,10 @@ export default function NameForm() {
   });
 
   const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(data: z.infer<typeof NameSchema>) {
+    setSubmitting(true);
     try {
       await saveStep({
         step: "name",
@@ -39,6 +42,8 @@ export default function NameForm() {
     } catch (error) {
       console.error("Error updating name:", error);
       form.setError("name", { message: "An unexpected error occurred." });
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -61,8 +66,8 @@ export default function NameForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Submitting..." : "Continue"}
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Submitting..." : "Continue"}
         </Button>
       </form>
     </Form>

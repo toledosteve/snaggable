@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui";
 import { getRouteForNextStep } from "@/lib/registration";
+import { apiFetch } from "@/lib/api-client";
 
 const OtpSchema = z.object({
   otp: z.string().length(4, "OTP must be exactly 4 digits"),
@@ -42,18 +43,9 @@ export default function OTPForm() {
         form.setError("otp", { message: response.message });
         return;
       }
-
-      const stateResponse = await fetch("/user/register/state", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (stateResponse.ok) {
-        const { currentStep } = await stateResponse.json();
-        const nextRoute = getRouteForNextStep(currentStep);
-        router.push(nextRoute);
-      } else {
-        router.push("/registration/enter-name");
+    
+      if (response?.nextRoute) {
+        router.push(response.nextRoute);
       }
     } catch (error) {
       console.error("Error verifying OTP:", error);
