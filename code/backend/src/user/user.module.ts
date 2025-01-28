@@ -1,27 +1,30 @@
 import { Module } from '@nestjs/common';
-import { VerificationModule } from '../verification/verification.module';
 import { RegistrationService } from './registration/service/registration.service';
 import { RegistrationController } from './registration/registration.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { RegistrationSchema, RegistrationAuditSchema } from './registration/schema/registration.schema';
 import { UserSchema } from './schema/user.schema';
 import { UserService } from './user.service';
-import { PhotoModule } from 'src/photo/photo.module';
+import { PhotoModule } from 'src/shared/photo/photo.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { UserController } from './user.controller';
+import { UserProfileController } from './profile/profile.controller';
+import { UserProfileService } from './profile/user-profile.service';
+import { UserProfileSchema } from './profile/schema/profile.schema';
 
 @Module({
   imports: [
     AuthModule,
-    VerificationModule.register('sinch'),
     MongooseModule.forFeature([
       { name: 'Registration', schema: RegistrationSchema },
       { name: 'RegistrationAudit', schema: RegistrationAuditSchema },
-      { name: 'User', schema: UserSchema }
+      { name: 'User', schema: UserSchema },
+      { name: 'UserProfile', schema: UserProfileSchema },
     ]),
     PhotoModule.register('local'),
   ],
-  controllers: [RegistrationController, UserController],
-  providers: [RegistrationService, UserService]
+  exports: [MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]), MongooseModule.forFeature([{ name: 'UserProfile', schema: UserProfileSchema }])],
+  controllers: [RegistrationController, UserController, UserProfileController],
+  providers: [RegistrationService, UserService, UserProfileService]
 })
 export class UserModule {}

@@ -2,103 +2,81 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Registration, RegistrationAudit } from '../schema/registration.schema';
-import { PhoneVerificationService } from 'src/verification/phone-verification.service';
-import { UserService } from 'src/user/user.service';
-import { User } from 'src/user/schema/user.schema';
+import { UserService } from './../../user.service';
+import { UserProfileService } from './../../profile/user-profile.service';
+import { User } from './../../schema/user.schema';
 import { stepsRegistry, stepsOrder } from '../config/steps.config';
-import { CreateUserDto } from 'src/user/dto/user.dto';
-import { PhotoService } from 'src/photo/photo-upload.service';
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { CreateUserDto } from './../../dto/user.dto';
+import { PhotoService } from '../../../shared/photo/photo-upload.service';
+import { CreateUserProfileDto } from '../../profile/dto/profile.dto';
 
 @Injectable()
 export class RegistrationService {
     constructor(
-        private readonly verificationService: PhoneVerificationService,
         private readonly userService: UserService,
+        private readonly userProfileService: UserProfileService,
         private readonly photoService: PhotoService,
         @InjectModel('Registration') private readonly registrationModel: Model<Registration>,
         @InjectModel('RegistrationAudit') private readonly registrationAuditModel: Model<RegistrationAudit>,
     ) {}
 
-    async start(phoneNumber: string, loginMethod: 'facebook' | 'apple' | 'phone'): Promise<string> {
-        const registrationId = crypto.randomUUID();
-        const verificationId = loginMethod === 'phone' ? await this.verificationService.sendVerification(phoneNumber) : undefined;
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    async start(data: Record<string, any>): Promise<{ registrationId: string }> {
+        const { loginMethod, phoneNumber, email } = data;
 
-        await this.registrationModel.create({
-            registrationId,
-            phoneNumber,
-            verificationId,
-            verificationStatus: 'pending',
-            phoneVerified: false,
-            stepsCompleted: ["start"],
-            registrationData: {},
+        const existingUser = await this.userService.checkExistingUser(loginMethod, phoneNumber, email);
+        if (existingUser) {
+            throw new Error(
+                `A user already exists with ${
+                    loginMethod === 'otp' ? `phone number: ${phoneNumber}` : `email: ${email}`
+                }. Please log in instead.`
+            );
+        }
+
+        const existingRegistration = await this.registrationModel.findOne({
             loginMethod,
-            createdAt: new Date(),
-            expiresAt,
-        });
+            ...(loginMethod === 'otp' && phoneNumber ? { phoneNumber } : {}),
+            ...(loginMethod !== 'otp' && email ? { email } : {}),
+            expiresAt: { $gte: new Date() },
+          });
+        
+          if (existingRegistration) {
+            throw new Error(
+              `A pending registration already exists for ${
+                loginMethod === 'otp' ? `phone number: ${phoneNumber}` : `email: ${email}`
+              }`
+            );
+        }
 
-        return registrationId;
+        const registrationId = crypto.randomUUID();
+    
+        const registration = new this.registrationModel({
+          registrationId,
+          loginMethod: loginMethod,
+          phoneNumber: loginMethod === 'otp' ? phoneNumber : undefined,
+          email: ['otp', 'facebook', 'google', 'apple'].includes(loginMethod) ? email : undefined,
+          stepsCompleted: ['start'],
+          registrationData: {},
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Set expiration to 24 hours
+        });
+    
+        await registration.save();
+        return registration;
     }
 
-    async resendOtp(registrationId: string): Promise<void> {
+    async register(registrationId: string, stepKey: string, stepData: Record<string, any>): Promise<{ message: string, nextStep?: string }> {
+        if (!registrationId) {
+            throw new Error('registrationId is required for this step.');
+        }
+        
         const registration = await this.registrationModel.findOne({
             registrationId,
-            verificationStatus: 'pending',
             expiresAt: { $gte: new Date() },
         });
     
         if (!registration) {
-            throw new Error('Invalid or expired registration ID');
-        }
-    
-        if (registration.verificationStatus !== 'pending') {
-            throw new Error('Cannot resend OTP for a non-pending verification');
-        }
-    
-        const newVerificationId = await this.verificationService.sendVerification(registration.phoneNumber);
-        registration.verificationId = newVerificationId;
-        registration.updatedAt = new Date();
-        await registration.save();
-    }
-
-    async verifyPhone(registrationId: string, code: string): Promise<void> {
-        const registration = await this.registrationModel.findOne({ 
-            registrationId,
-            verificationStatus: 'pending',
-            expiresAt: { $gte: new Date() },
-        });
-
-        if (!registration) {
-            throw new Error('Invalid registration ID');
-        }
-
-        const isValid = await this.verificationService.validateVerification(registration.verificationId, code);
-
-        if (!isValid) {
-            throw new Error('Invalid verification code');
-        }
-
-        if (!registration.stepsCompleted.includes("confirm_phone")) {
-            registration.stepsCompleted.push("confirm_phone");
-        }
-
-        registration.verificationStatus = 'verified';
-        registration.phoneVerified = true;
-        registration.updatedAt = new Date();  
-        await registration.save();
-    }
-
-    async saveStep(registrationId: string, stepKey: string, stepData: Record<string, any>): Promise<{ message: string, nextStep?: string }> {
-        const registration = await this.registrationModel.findOne({
-            registrationId,
-            verificationStatus: 'verified',
-            expiresAt: { $gte: new Date() },
-        });
-    
-        if (!registration) {
-            throw new Error('Invalid registration ID.');
+            throw new Error('Invalid or expired registration ID.');
         }
     
         if (registration.stepsCompleted.includes(stepKey)) {
@@ -123,7 +101,7 @@ export class RegistrationService {
         };
     }
 
-    async complete(registrationId: string): Promise<User> {
+    async complete(registrationId: string): Promise<User | boolean> {
         const registration = await this.registrationModel.findOne({
             registrationId,
             verificationStatus: 'verified',
@@ -142,18 +120,48 @@ export class RegistrationService {
 
         const createUserDto: CreateUserDto = {
             userId: registrationId,
-            phoneNumber: registrationData.phoneNumber,
-            phoneVerified: registration.phoneVerified,
-            name: typeof registrationData.name === 'object' ? registrationData.name.name : registrationData.name,
-            dob: typeof registrationData.dob === 'object' ? registrationData.dob : null,
-            gender: typeof registrationData.gender === 'object' ? registrationData.gender.gender : registrationData.gender,
-            photos: photos,
-            location: registrationData.location || null,
-            showGender: registrationData.show_gender.showGender ?? true, 
-            acceptPledge: registrationData.pledge.acceptPledge ?? false,
+            name: registrationData.name,
+            phoneNumber: {
+                value: registrationData.phoneNumber.value,
+                verified: registrationData.phoneNumber.verified || false,
+            },
+            email: {
+                value: registrationData.email.value,
+                verified: registrationData.email.verified || false,
+            },
+            google: registrationData.google ? {
+                id: registrationData.google.id,
+                email: registrationData.google.email,
+            } : undefined,
+            apple: registrationData.apple ? {
+                id: registrationData.apple.id,
+                email: registrationData.apple.email,
+            } : undefined,
+            facebook: registrationData.facebook ? {
+                id: registrationData.facebook.id,
+                email: registrationData.facebook.email,
+            } : undefined,
+            acceptPledge: registrationData.pledge?.acceptPledge ?? false,
         };
 
         const user = await this.userService.create(createUserDto);
+
+        const createUserProfileDto: CreateUserProfileDto = {
+            aboutMe: registrationData.aboutMe || '',
+            vitals: {
+              dob: registrationData.dob || null,
+              height: registrationData.height || null,
+              location: registrationData.location || null,
+            },
+            identity: {
+              gender: registrationData.gender,
+              showGender: registrationData.showGender ?? true,
+              interestedIn: registrationData.interestedIn || [],
+            },
+            photos: photos,
+          };
+        
+          await this.userProfileService.create(user.userId,createUserProfileDto);
     
         await this.registrationAuditModel.create({
             registrationId,
@@ -197,7 +205,6 @@ export class RegistrationService {
 
     async getState(registrationId: string): Promise<{ 
         phoneNumber: string;
-        isPhoneVerified: boolean;
         currentStep: string;
         nextStep: string | undefined;
         description: string;
@@ -226,7 +233,6 @@ export class RegistrationService {
       
         return {
           phoneNumber: registration.phoneNumber,
-          isPhoneVerified: registration.phoneVerified,
           currentStep: currentStepKey,
           description: currentStepInfo?.description || "Complete",
           nextStep: nextStepKey,
@@ -240,7 +246,7 @@ export class RegistrationService {
         });
     
         for (const registration of expiredRegistrations) {
-            const status = registration.phoneVerified ? 'abandoned' : 'unverified';
+            const status = 'abandoned';
         
             await this.registrationAuditModel.create({
                 registrationId: registration.registrationId,

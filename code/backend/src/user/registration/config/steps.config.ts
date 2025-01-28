@@ -1,8 +1,7 @@
-import { NameDto, DobDto, GenderDto, ShowGenderDto, PhotosDto, LocationDto, PledgeDto } from "../dto/steps.dto";
+import { NameDto, DobDto, GenderDto, ShowGenderDto, PhotosDto, LocationDto, PledgeDto, StartDto } from "../dto/steps.dto";
 
 export const stepsOrder = [
     "start",
-    "confirm_phone",
     "name",
     "dob",
     "gender",
@@ -16,12 +15,7 @@ export const stepsRegistry = {
     start: {
         description: "Start registration process",
         isRequired: true,
-        dto: null, 
-    },
-    "confirm_phone": {
-        description: "Verify phone number via OTP",
-        isRequired: true,
-        dto: null, 
+        dto: StartDto, 
     },
     name: {
         description: "Enter user name",

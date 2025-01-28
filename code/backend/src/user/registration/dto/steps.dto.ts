@@ -1,4 +1,21 @@
-import { IsNumber, IsString, Max, Min, IsIn, IsBoolean, IsArray, ArrayNotEmpty } from "class-validator";
+import { IsNumber, IsString, Max, Min, IsIn, IsBoolean, IsArray, ArrayNotEmpty, IsNotEmpty, ValidateIf } from "class-validator";
+
+export class StartDto {
+    @IsString()
+    @IsNotEmpty()
+    @IsIn(['otp', 'facebook', 'google', 'apple'])
+    loginMethod: string;
+
+    @ValidateIf((obj) => obj.loginMethod === 'otp')
+    @IsString()
+    @IsNotEmpty()
+    phoneNumber?: string;
+
+    @ValidateIf((obj) => ['facebook', 'google', 'apple'].includes(obj.loginMethod))
+    @IsString()
+    @IsNotEmpty()
+    email?: string;
+}
 
 export class NameDto {
     @IsString()

@@ -1,3 +1,4 @@
 data/
 .DS_Store*
-code/backend/uploads/*
+code/backend/uploads/
+keys/

@@ -1,50 +1,22 @@
 import { Controller, Post, Body, BadRequestException, HttpCode, UseInterceptors, UploadedFiles, UseGuards, Get } from '@nestjs/common';
-import { CreateRegistrationDto, RegistrationDto, VerifyPhoneDto } from './dto/registration.dto';
+import { RegistrationDto, SaveStepDto } from './dto/registration.dto';
 import { RegistrationService } from './service/registration.service';
 import { stepsRegistry } from './config/steps.config';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { PhotosDto } from './dto/steps.dto';
 import { AccessTokenGuard } from 'src/auth/guards/access-token.guard';
+import { StartDto } from './dto/steps.dto';
 
 @Controller('user/register')
 @UseGuards(AccessTokenGuard)
 export class RegistrationController {
     constructor(private readonly registrationService: RegistrationService) {}
 
-    @Post("start")
+    @Post()
     @HttpCode(200)
-    async startRegistration(@Body() createRegistration: CreateRegistrationDto) {
-        try {
-            const registrationId = await this.registrationService.start(
-                createRegistration.phoneNumber,
-                createRegistration.loginMethod
-            );
-            return { registrationId, message: 'Registration started successfully.' };
-        } catch (error) {
-            throw new BadRequestException(error.message);
-        }
-    }
-
-    @Post("verify")
-    @HttpCode(200)
-    async verifyPhone(@Body() verifyPhoneDto: VerifyPhoneDto) {
-        try {
-            await this.registrationService.verifyPhone(
-                verifyPhoneDto.registrationId,
-                verifyPhoneDto.code
-            );
-            return { message: 'Phone number verified successfully.' };
-        } catch (error) {
-            throw new BadRequestException(error.message);
-        }
-    }
-
-    @Post("save-step")
-    @HttpCode(200)
-    async saveStep(@Body() saveStepDto: any) {
-        const { registrationId, step, data } = saveStepDto;
+    async register(@Body() registerDto: SaveStepDto) {
+        const { registrationId, step, data } = registerDto;
 
         const stepInfo = stepsRegistry[step];
         if (!stepInfo) {
@@ -56,7 +28,11 @@ export class RegistrationController {
             throw new BadRequestException(`No DTO defined for step: ${step}`);
         }
 
-        if (saveStepDto.step === 'photos') {
+        if (step !== 'start' && !registrationId) {
+            throw new BadRequestException('registrationId is required for this step.');
+          }
+
+        if (registerDto.step === 'photos') {
             throw new BadRequestException('Please use /upload-photos endpoint to upload photos.');
         }
 
@@ -78,8 +54,20 @@ export class RegistrationController {
             });
         }
 
+        if (step === 'start') {
+            try {
+              const newRegistration = await this.registrationService.start(transformedData);
+              return {
+                message: 'Registration started successfully.',
+                registrationId: newRegistration.registrationId,
+              };
+            } catch (error) {
+              throw new BadRequestException(error.message);
+            }
+        }
+
         try {
-            return await this.registrationService.saveStep(registrationId, step, transformedData);
+            return await this.registrationService.register(registrationId, step, transformedData);
         } catch (error) {
             throw new BadRequestException(error.message);
         }
@@ -164,21 +152,6 @@ export class RegistrationController {
         try {
             const state = await this.registrationService.getState(registrationDto.registrationId);
             return { state };
-        } catch (error) {
-            throw new BadRequestException(error.message);
-        }
-    }
-
-    @Post("resend-otp")
-    @HttpCode(200)
-    async resendOtp(@Body() { registrationId }: { registrationId: string }): Promise<{ message: string }> {
-        if (!registrationId || typeof registrationId !== "string") {
-            throw new BadRequestException('A valid Registration ID is required.');
-        }
-
-        try {
-            await this.registrationService.resendOtp(registrationId);
-            return { message: 'OTP resent successfully.'};
         } catch (error) {
             throw new BadRequestException(error.message);
         }

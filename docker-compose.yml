@@ -37,10 +37,10 @@ services:
       context: .
       dockerfile: ./docker/frontend/Dockerfile
     volumes:
-      - ./code/frontend:/usr/app
+      - ./code/web:/usr/app
       - exclude_frontend:/usr/app/node_modules
     ports:
-      - "4000:4001"
+      - "80:4001"
     depends_on:
       - database
       - backend

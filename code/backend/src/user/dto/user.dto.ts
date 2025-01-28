@@ -1,102 +1,70 @@
-// user.dto.ts
-import { IsString, IsBoolean, IsArray, IsOptional, IsObject, IsNumber, IsUUID, IsPhoneNumber } from 'class-validator';
+import { PartialType } from '@nestjs/swagger';
+import { IsString, IsBoolean, IsOptional, IsEmail, ValidateNested, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class PhoneNumberDto {
+  @IsString()
+  value: string;
+
+  @IsBoolean()
+  @IsOptional()
+  verified?: boolean;
+}
+
+class EmailDto {
+  @IsEmail()
+  value: string;
+
+  @IsBoolean()
+  @IsOptional()
+  verified?: boolean;
+}
+
+class LinkedAccountDto {
+  @IsString()
+  id: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+}
 
 export class CreateUserDto {
+  @IsString()
+  @IsOptional()
   @IsUUID()
-  userId: string;
-
-  @IsPhoneNumber()
-  phoneNumber: string;
-
-  @IsBoolean()
-  phoneVerified: boolean;
+  userId?: string;
 
   @IsString()
   name: string;
 
-  @IsObject()
-  dob: { day: number; month: string; year: number };
+  @ValidateNested()
+  @Type(() => PhoneNumberDto)
+  phoneNumber: PhoneNumberDto;
 
-  @IsString()
-  gender: string;
+  @ValidateNested()
+  @Type(() => EmailDto)
+  email: EmailDto;
 
-  @IsArray()
+  @ValidateNested()
+  @Type(() => LinkedAccountDto)
   @IsOptional()
-  photos?: string[];
+  google?: LinkedAccountDto;
 
-  @IsObject()
+  @ValidateNested()
+  @Type(() => LinkedAccountDto)
   @IsOptional()
-  location?: { lat: number; lon: number };
+  apple?: LinkedAccountDto;
+
+  @ValidateNested()
+  @Type(() => LinkedAccountDto)
+  @IsOptional()
+  facebook?: LinkedAccountDto;
 
   @IsBoolean()
   @IsOptional()
-  showGender?: boolean;
-
-  @IsBoolean()
-  acceptPledge: boolean;
+  acceptPledge?: boolean;
 }
 
-export class UpdateUserDto {
-  @IsString()
-  @IsOptional()
-  name?: string;
-
-  @IsObject()
-  @IsOptional()
-  dob?: { day: number; month: string; year: number };
-
-  @IsString()
-  @IsOptional()
-  gender?: string;
-
-  @IsArray()
-  @IsOptional()
-  photos?: string[];
-
-  @IsObject()
-  @IsOptional()
-  location?: { lat: number; lon: number };
-
-  @IsBoolean()
-  @IsOptional()
-  showGender?: boolean;
-}
-
-export class UserResponseDto {
-  @IsUUID()
-  userId: string;
-
-  @IsPhoneNumber()
-  phoneNumber: string;
-
-  @IsBoolean()
-  phoneVerified: boolean;
-
-  @IsString()
-  name: string;
-
-  @IsObject()
-  dob: { day: number; month: string; year: number };
-
-  @IsString()
-  gender: string;
-
-  @IsArray()
-  photos: string[];
-
-  @IsObject()
-  @IsOptional()
-  location?: { lat: number; lon: number };
-
-  @IsBoolean()
-  showGender: boolean;
-
-  @IsBoolean()
-  acceptPledge: boolean;
-
-  @IsString()
-  createdAt: string;
-
-  @IsString()
-  updatedAt: string;
-}
+export class UpdateUserDto extends PartialType(CreateUserDto) {}
+export class UserResponseDto extends PartialType(CreateUserDto) {}

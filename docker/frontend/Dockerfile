@@ -1,7 +1,7 @@
 FROM node:22.12.0-alpine AS intermediate
 LABEL stage=intermediate
 WORKDIR /root/temp
-COPY ./code/frontend/package*.json /root/temp/
+COPY ./code/web/package*.json /root/temp/
 RUN yarn
 
 FROM node:22.12.0-alpine
